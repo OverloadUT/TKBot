@@ -1,0 +1,6 @@
+module.exports = {
+  login : "username",
+  pass : "oauth:token",
+  aspects_host: "something.meteor.com",
+  aspects_port: 80,
+};
