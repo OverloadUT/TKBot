@@ -4,8 +4,77 @@ var config = require('./config')
 var ddp = require('ddp');
 var irc = require('irc');
 
+var Twitter = require('twitter');
+
 var initialized = false;
 var aspectcount = 0;
+
+
+var twitterclient = new Twitter({
+  consumer_key: config.twitter_consumer_key,
+  consumer_secret: config.twitter_consumer_secret,
+  access_token_key: config.twitter_access_token_key,
+  access_token_secret: config.twitter_access_token_secret,
+});
+
+var twitter_interval = 10 * 1000;
+var last_tweet_id = 1;
+setInterval(function(){
+    console.log("Refreshing Twitter...")
+    twitterclient.get('statuses/user_timeline', {
+        screen_name: "ThursdayKnights",
+        exclude_replies: true,
+        trim_user: true,
+        include_rts: false,
+        since_id: last_tweet_id,
+    }, function(error, params, response){
+        if(error) {
+            console.log("Twitter API error");
+            console.log(error);
+            console.log(params);
+        } else {
+            console.log("Found " + params.length + " new tweets");
+            if (params.length > 0) {
+                if (last_tweet_id != 1 && last_tweet_id != params[0].id) {
+                    // Found a new tweet. Announce it!
+                    announce_tweet(params[0].text, params[0].entities)
+                    //console.log(params[0]);
+                    //console.log(params[0].entities.media);
+                    //console.log(params[0].extended_entities.media);
+                }
+                last_tweet_id = params[0].id;
+                console.log("New most recent tweet id: " + last_tweet_id);
+            }
+        }
+
+    });
+}, twitter_interval);
+
+var announce_tweet = function(text, entities) {
+    text = strip_twitter_crap(text);
+
+    if(entities.media.length > 0) {
+        text += " http://" + entities.media[0].display_url;
+    } else {
+        text += " http://"
+    }
+
+    ircclient.say('#thursdayknights', "Tweet: " + text);
+}
+
+var strip_twitter_crap = function(text) {
+    // Remove hashtags
+    text = text.replace(/(?:^|\s)#[^\s]+/g, '');
+
+    // Remove links
+    text = text.replace(/https?:[^\s]+/g, '');
+
+    // Remove resulting double spaces
+    text = text.replace("  ", " ");
+
+    return text;
+}
+
 
 var ddpclient = new ddp({
     host: config.aspects_host,
@@ -55,7 +124,7 @@ ddpclient.on('added', function(collection, id){
             aspectcount = _.size(ddpclient.collections.aspects);
             var aspect = ddpclient.collections.aspects[id];
             console.log("New aspect: " + aspect.name);
-            ircclient.say('#thursdayknights', "New " + aspect.type + " aspect: " + aspect.name);
+            //ircclient.say('#thursdayknights', "New " + aspect.type + " aspect: " + aspect.name);
         }
     }
 });
@@ -90,7 +159,7 @@ var commands = {
         Object.keys(aspects).forEach(function(key) {
             var item = aspects[key];
             if(item.type == args) {
-                ircclient.say('#thursdayknights', "Aspect: " + item.name)
+                //ircclient.say('#thursdayknights', "Aspect: " + item.name)
             }
         });
     },
